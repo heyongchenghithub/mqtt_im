@@ -1,6 +1,19 @@
 const mosca = require('./mosca');
 const config = require('./conf/config');
-//const ascoltatori = require('ascoltatori');
+
+const mongoose = require('mongoose');
+mongoose.connect(config.mongo, function(err) {
+	if (err) {
+		console.log(err);
+	}
+});
+
+console.log('mqtt server launching ...');
+process.on('uncaughtException', (err) => {
+	if (err) {
+		console.log('stack trace is: ', err.stack);
+	}
+});
 
 const settings = {
 	port: 1883,
@@ -35,7 +48,6 @@ server.on('clientDisconnected', function (client) {
 	console.log('clientDisconnected', client.id);
 });
 server.on('ready', setup);
-// fired when the mqtt server is ready
 function setup() {
 	console.log('Mosca server is up and running');
 }

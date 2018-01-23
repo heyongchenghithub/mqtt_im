@@ -21,7 +21,7 @@ var settings = {
 
 // client connection
 
-var client = mqtt.connect('mqtt://localhost:1883', settings, function (err, data) {
+var client = mqtt.connect('mqtt://im.dev.poker.top', settings, function (err, data) {
     console.log(err, data)
 });
 client.subscribe('test', { qos: 1 });
