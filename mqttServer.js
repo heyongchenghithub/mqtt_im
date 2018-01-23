@@ -1,12 +1,22 @@
-var mosca = require('mosca');
+const mosca = require('./mosca');
+const config = require('./conf/config');
+//const ascoltatori = require('ascoltatori');
 
-var ascoltatori = require('ascoltatori');
-
-var settings = {
+const settings = {
 	port: 1883,
+	backend: {
+		type: 'mongo',
+		url: config.mongo,
+		pubsubCollection: 'ascoltatori',
+		mongo: {}
+	},
+	persistence: {
+		factory: mosca.persistence.Mongo,
+		url: config.mongo
+	}
 };
 
-var server = new mosca.Server(settings);
+const server = new mosca.Server(settings);
 
 server.on('clientConnected', function (client) {
 	console.log('client connected', client.id);
@@ -14,16 +24,16 @@ server.on('clientConnected', function (client) {
 
 // fired when a message is received
 server.on('published', function (packet, client) {
-	console.log('broker published topic', (packet.topic))
+	console.log('broker published topic', (packet.topic));
 	console.log('broker published payload', (packet.payload).toString());
 });
 server.on('clientDisconnecting', function (packet, client) {
-	console.log('broker clientDisconnecting topic', (packet.topic))
+	console.log('broker clientDisconnecting topic', (packet.topic));
 	console.log('broker clientDisconnecting payload', (packet.payload).toString());
-})
+});
 server.on('clientDisconnected', function (client) {
-	console.log()
-})
+	console.log('clientDisconnected', client.id);
+});
 server.on('ready', setup);
 // fired when the mqtt server is ready
 function setup() {
@@ -33,4 +43,4 @@ server.authenticate = function (client, username, password, callback) {
 	// var authorized = (username === '5a5ea50c553513774072889a' && password.toString() === 'secret');
 	// if (authorized) client.user = username;
 	callback(null, true);
-}  
+};

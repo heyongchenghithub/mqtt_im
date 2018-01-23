@@ -1,0 +1,14 @@
+# node.js
+node_modules/
+npm-debug.log
+
+# vim
+*.swp
+log/**/*.*
+.vscode/**/*.*
+.idea/**/*.*
+# static
+build/
+dev/
+tmp/
+conf/
