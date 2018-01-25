@@ -31,12 +31,12 @@ var jsonschema = require("jsonschema");
 var serializers = require("./serializers");
 
 module.exports = {
-  modernize: modernize,
-  validate: validate,
-  populate: populate,
+	modernize: modernize,
+	validate: validate,
+	populate: populate,
 
-  defaultsModern: defaultsModern,
-  defaultsLegacy: defaultsLegacy,
+	defaultsModern: defaultsModern,
+	defaultsLegacy: defaultsLegacy,
 };
 
 
@@ -50,145 +50,145 @@ module.exports = {
  */
 function modernize(legacy) {
 
-  legacy = legacy || {};
+	legacy = legacy || {};
 
-  var modernized = {};
+	var modernized = {};
 
-  // "plain copyable" conserved options
-  var conserved = [
-    "id",
-    "host",
-    "maxInflightMessages",
-    "stats",
-    "publishNewClient",
-    "publishClientDisconnect",
-    "publishSubscriptions",
-    "onQoS2publish"
-  ];
+	// "plain copyable" conserved options
+	var conserved = [
+		"id",
+		"host",
+		"maxInflightMessages",
+		"stats",
+		"publishNewClient",
+		"publishClientDisconnect",
+		"publishSubscriptions",
+		"onQoS2publish"
+	];
 
-  // copy all conserved options
-  conserved.forEach(function (name) {
-    if (legacy.hasOwnProperty(name)) {
-      modernized[name] = legacy[name];
-    }
-  });
+	// copy all conserved options
+	conserved.forEach(function (name) {
+		if (legacy.hasOwnProperty(name)) {
+			modernized[name] = legacy[name];
+		}
+	});
 
-  // TODO: copy `backend` carefully
-  if (legacy.hasOwnProperty('backend')) {
-    modernized.backend = legacy.backend;
-  }
+	// TODO: copy `backend` carefully
+	if (legacy.hasOwnProperty('backend')) {
+		modernized.backend = legacy.backend;
+	}
 
-  // TODO: copy `ascoltatore` carefully
-  if (legacy.hasOwnProperty('ascoltatore')) {
-    modernized.ascoltatore = legacy.ascoltatore;
-  }
+	// TODO: copy `ascoltatore` carefully
+	if (legacy.hasOwnProperty('ascoltatore')) {
+		modernized.ascoltatore = legacy.ascoltatore;
+	}
 
-  // TODO: copy `persistence` carefully
-  if (legacy.hasOwnProperty('persistence')) {
-    modernized.persistence = legacy.persistence;
-  }
+	// TODO: copy `persistence` carefully
+	if (legacy.hasOwnProperty('persistence')) {
+		modernized.persistence = legacy.persistence;
+	}
 
-  // TODO: copy `logger` carefully
-  if (legacy.hasOwnProperty('logger')) {
-    modernized.logger = legacy.logger;
-  }
+	// TODO: copy `logger` carefully
+	if (legacy.hasOwnProperty('logger')) {
+		modernized.logger = legacy.logger;
+	}
 
-  // construct `credentials`
-  if (legacy.hasOwnProperty('credentials')) {
-    // copy as is
-    modernized.credentials = clone(legacy.credentials);
-  } else if (legacy.hasOwnProperty('secure')) {
-    // construct from `secure`
-    modernized.credentials = {};
-    if (legacy.secure.hasOwnProperty('keyPath')) {
-      modernized.credentials.keyPath = legacy.secure.keyPath;
-    }
-    if (legacy.secure.hasOwnProperty('certPath')) {
-      modernized.credentials.certPath = legacy.secure.certPath;
-    }
-  } // else no credentials were provided
+	// construct `credentials`
+	if (legacy.hasOwnProperty('credentials')) {
+		// copy as is
+		modernized.credentials = clone(legacy.credentials);
+	} else if (legacy.hasOwnProperty('secure')) {
+		// construct from `secure`
+		modernized.credentials = {};
+		if (legacy.secure.hasOwnProperty('keyPath')) {
+			modernized.credentials.keyPath = legacy.secure.keyPath;
+		}
+		if (legacy.secure.hasOwnProperty('certPath')) {
+			modernized.credentials.certPath = legacy.secure.certPath;
+		}
+	} // else no credentials were provided
 
-  // construct `interfaces`
-  if (legacy.hasOwnProperty('interfaces')) {
-    // cloning
-    modernized.interfaces = clone(legacy.interfaces);
-  } else {
-    // construct from legacy keys
-    modernized.interfaces = [];
+	// construct `interfaces`
+	if (legacy.hasOwnProperty('interfaces')) {
+		// cloning
+		modernized.interfaces = clone(legacy.interfaces);
+	} else {
+		// construct from legacy keys
+		modernized.interfaces = [];
 
-    // translate mqtt options
-    var mqtt_enabled = !legacy.onlyHttp && (typeof legacy.secure === 'undefined' || legacy.allowNonSecure);
-    if (mqtt_enabled) {
-      var mqtt_interface = { type: 'mqtt' };
+		// translate mqtt options
+		var mqtt_enabled = !legacy.onlyHttp && (typeof legacy.secure === 'undefined' || legacy.allowNonSecure);
+		if (mqtt_enabled) {
+			var mqtt_interface = { type: 'mqtt' };
 
-      if (legacy.hasOwnProperty('port')) {
-        mqtt_interface.port = legacy.port;
-      }
+			if (legacy.hasOwnProperty('port')) {
+				mqtt_interface.port = legacy.port;
+			}
 
-      if (legacy.hasOwnProperty('maxConnections')) {
-        mqtt_interface.maxConnections = legacy.maxConnections;
-      }
+			if (legacy.hasOwnProperty('maxConnections')) {
+				mqtt_interface.maxConnections = legacy.maxConnections;
+			}
 
-      modernized.interfaces.push(mqtt_interface);
-    }
+			modernized.interfaces.push(mqtt_interface);
+		}
 
-    // translate mqtts options
-    var mqtts_enabled = !legacy.onlyHttp && legacy.secure;
-    if (mqtts_enabled) {
-      var mqtts_interface = { type: 'mqtts' };
+		// translate mqtts options
+		var mqtts_enabled = !legacy.onlyHttp && legacy.secure;
+		if (mqtts_enabled) {
+			var mqtts_interface = { type: 'mqtts' };
 
-      if (legacy.secure.hasOwnProperty('port')) {
-        mqtts_interface.port = legacy.secure.port;
-      }
+			if (legacy.secure.hasOwnProperty('port')) {
+				mqtts_interface.port = legacy.secure.port;
+			}
 
-      modernized.interfaces.push(mqtts_interface);
-    }
+			modernized.interfaces.push(mqtts_interface);
+		}
 
-    // translate http options
-    var http_enabled = !!(legacy.http);
-    if (http_enabled) {
-      var http_interface = { type: 'http' };
+		// translate http options
+		var http_enabled = !!(legacy.http);
+		if (http_enabled) {
+			var http_interface = { type: 'http' };
 
-      if (legacy.http.hasOwnProperty('port')) {
-        http_interface.port = legacy.http.port;
-      }
+			if (legacy.http.hasOwnProperty('port')) {
+				http_interface.port = legacy.http.port;
+			}
 
-      if (legacy.http.hasOwnProperty('bundle')) {
-        http_interface.bundle = legacy.http.bundle;
-      }
+			if (legacy.http.hasOwnProperty('bundle')) {
+				http_interface.bundle = legacy.http.bundle;
+			}
 
-      if (legacy.http.hasOwnProperty('static')) {
-        http_interface.static = legacy.http.static;
-      }
+			if (legacy.http.hasOwnProperty('static')) {
+				http_interface.static = legacy.http.static;
+			}
 
-      modernized.interfaces.push(http_interface);
-    }
+			modernized.interfaces.push(http_interface);
+		}
 
-    // translate https options
-    var https_enabled = !!(legacy.https);
-    if (https_enabled) {
-      var https_interface = { type: 'https' };
+		// translate https options
+		var https_enabled = !!(legacy.https);
+		if (https_enabled) {
+			var https_interface = { type: 'https' };
 
-      if (legacy.https.hasOwnProperty('port')) {
-        https_interface.port = legacy.https.port;
-      }
+			if (legacy.https.hasOwnProperty('port')) {
+				https_interface.port = legacy.https.port;
+			}
 
-      if (legacy.https.hasOwnProperty('bundle')) {
-        https_interface.bundle = legacy.https.bundle;
-      }
+			if (legacy.https.hasOwnProperty('bundle')) {
+				https_interface.bundle = legacy.https.bundle;
+			}
 
-      if (legacy.https.hasOwnProperty('static')) {
-        https_interface.static = legacy.https.static;
-      }
+			if (legacy.https.hasOwnProperty('static')) {
+				https_interface.static = legacy.https.static;
+			}
 
-      modernized.interfaces.push(https_interface);
-    }
+			modernized.interfaces.push(https_interface);
+		}
 
-    // NOTE: there are ways end up with no interfaces at all, for example
-    // `httpOnly: true` with undefined http and https
-  }
+		// NOTE: there are ways end up with no interfaces at all, for example
+		// `httpOnly: true` with undefined http and https
+	}
 
-  return modernized;
+	return modernized;
 }
 
 
@@ -200,83 +200,83 @@ function modernize(legacy) {
  * @return {jsonschema.ValidatorResult} Result of validation
  */
 function validate(opts, validationOptions) {
-  var validator = new jsonschema.Validator();
+	var validator = new jsonschema.Validator();
 
-  // custom function type
-  validator.types.function = function testFunction(instance) {
-    return instance instanceof Function;
-  };
+	// custom function type
+	validator.types.function = function testFunction(instance) {
+		return instance instanceof Function;
+	};
 
-  validator.addSchema({
-    id: '/Credentials',
-    type: 'object',
-    additionalProperties: true,
-    properties: {
-      'keyPath': { type: 'string', required: true },
-      'certPath': { type: 'string', required: true },
-      'caPaths': { type: 'array', required: false },
-      'requestCert': { type: 'boolean', required: false },
-      'rejectUnauthorized': { type: 'boolean', required: false }
-    }
-  });
+	validator.addSchema({
+		id: '/Credentials',
+		type: 'object',
+		additionalProperties: true,
+		properties: {
+			'keyPath': { type: 'string', required: true },
+			'certPath': { type: 'string', required: true },
+			'caPaths': { type: 'array', required: false },
+			'requestCert': { type: 'boolean', required: false },
+			'rejectUnauthorized': { type: 'boolean', required: false }
+		}
+	});
 
-  validator.addSchema({
-    id: '/Interface',
-    type: 'object',
-    properties: {
-      'type': { type: ['string', 'function'], required: true },
-      'host': { type: ['string', 'null'] },
-      'port': { type: ['integer'] },
-      'credentials': { $ref: '/Credentials' },
-    }
-  });
+	validator.addSchema({
+		id: '/Interface',
+		type: 'object',
+		properties: {
+			'type': { type: ['string', 'function'], required: true },
+			'host': { type: ['string', 'null'] },
+			'port': { type: ['integer'] },
+			'credentials': { $ref: '/Credentials' },
+		}
+	});
 
-  validator.addSchema({
-    id: '/Options',
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      'id': { type: 'string' },
-      'host': { type: ['string', 'null'] },
-      'interfaces': {
-        type: 'array',
-        items: { $ref: '/Interface' }
-      },
-      'credentials': { $ref: '/Credentials' },
+	validator.addSchema({
+		id: '/Options',
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			'id': { type: 'string' },
+			'host': { type: ['string', 'null'] },
+			'interfaces': {
+				type: 'array',
+				items: { $ref: '/Interface' }
+			},
+			'credentials': { $ref: '/Credentials' },
 
-      'backend': { type: 'object' },     // TODO
-      'ascoltatore': { type: 'object' }, // TODO
-      'persistence': { type: 'object' }, // TODO
-      'logger': { type: 'object' },      // TODO
+			'backend': { type: 'object' },     // TODO
+			'ascoltatore': { type: 'object' }, // TODO
+			'persistence': { type: 'object' }, // TODO
+			'logger': { type: 'object' },      // TODO
 
-      'maxInflightMessages': { type: 'integer' },
-      'stats': { type: 'boolean' },
-      'publishNewClient': { type: 'boolean' },
-      'publishClientDisconnect': { type: 'boolean' },
-      'publishSubscriptions': { type: 'boolean' },
-      'onQoS2publish': { type: 'string' },
-    }
-  });
+			'maxInflightMessages': { type: 'integer' },
+			'stats': { type: 'boolean' },
+			'publishNewClient': { type: 'boolean' },
+			'publishClientDisconnect': { type: 'boolean' },
+			'publishSubscriptions': { type: 'boolean' },
+			'onQoS2publish': { type: 'string' },
+		}
+	});
 
-  var result = validator.validate(opts, '/Options', validationOptions);
+	var result = validator.validate(opts, '/Options', validationOptions);
 
-  // check required credentials
-  if (opts.hasOwnProperty('interfaces')) {
-    var hasCredentials = opts.hasOwnProperty('credentials');
-    var reqCredentials = opts.interfaces.some(function (iface) {
-      var req = (iface.type === 'mqtts' || iface.type === 'https');
-      var has = iface.hasOwnProperty('credentials');
-      return req && !has;
-    });
+	// check required credentials
+	if (opts.hasOwnProperty('interfaces')) {
+		var hasCredentials = opts.hasOwnProperty('credentials');
+		var reqCredentials = opts.interfaces.some(function (iface) {
+			var req = (iface.type === 'mqtts' || iface.type === 'https');
+			var has = iface.hasOwnProperty('credentials');
+			return req && !has;
+		});
 
-    if (reqCredentials && !hasCredentials) {
-      result.addError('one of the defiend interfaces requires credentials');
-    }
-  }
+		if (reqCredentials && !hasCredentials) {
+			result.addError('one of the defiend interfaces requires credentials');
+		}
+	}
 
-  // TODO: check conflicting backend and ascoltatore
+	// TODO: check conflicting backend and ascoltatore
 
-  return result;
+	return result;
 }
 
 
@@ -288,26 +288,26 @@ function validate(opts, validationOptions) {
  * @return {Object}         Populated options
  */
 function populate(opts) {
-  var defaults = defaultsModern();
+	var defaults = defaultsModern();
 
-  // do not extend `interfaces`
-  if (opts.hasOwnProperty('interfaces')) {
-    delete defaults.interfaces;
-  }
-  var populated = extend(true, defaults, opts);
+	// do not extend `interfaces`
+	if (opts.hasOwnProperty('interfaces')) {
+		delete defaults.interfaces;
+	}
+	var populated = extend(true, defaults, opts);
 
-  populated.interfaces.forEach(function (iface) {
-    if (typeof iface.port === "undefined") {
-      switch (iface.type) {
-        case "mqtt":   iface.port = 1883; break;
-        case "mqtts":  iface.port = 8883; break;
-        case "http":   iface.port = 3000; break;
-        case "https":  iface.port = 3001; break;
-      }
-    }
-  });
+	populated.interfaces.forEach(function (iface) {
+		if (typeof iface.port === "undefined") {
+			switch (iface.type) {
+				case "mqtt": iface.port = 1883; break;
+				case "mqtts": iface.port = 8883; break;
+				case "http": iface.port = 3000; break;
+				case "https": iface.port = 3001; break;
+			}
+		}
+	});
 
-  return populated;
+	return populated;
 }
 
 
@@ -318,32 +318,32 @@ function populate(opts) {
  * @return {Object}  Legacy options
  */
 function defaultsLegacy() {
-  return {
-    port: 1883,
-    host: null,
-    maxConnections: 10000000,
-    backend: {
-      json: false,
-      wildcardOne: '+',
-      wildcardSome: '#'
-    },
-    stats: false,
-    publishNewClient: true,
-    publishClientDisconnect: true,
-    publishSubscriptions: true,
-    maxInflightMessages: 1024,
-    onQoS2publish: 'noack',
-    logger: {
-      name: "mosca",
-      level: "warn",
-      serializers: {
-        client: serializers.clientSerializer,
-        packet: serializers.packetSerializer,
-        req: pino.stdSerializers.req,
-        res: pino.stdSerializers.res
-      }
-    }
-  };
+	return {
+		port: 1883,
+		host: null,
+		maxConnections: 10000000,
+		backend: {
+			json: false,
+			wildcardOne: '+',
+			wildcardSome: '#'
+		},
+		stats: false,
+		publishNewClient: true,
+		publishClientDisconnect: true,
+		publishSubscriptions: true,
+		maxInflightMessages: 1024,
+		onQoS2publish: 'noack',
+		logger: {
+			name: "mosca",
+			level: "warn",
+			serializers: {
+				client: serializers.clientSerializer,
+				packet: serializers.packetSerializer,
+				req: pino.stdSerializers.req,
+				res: pino.stdSerializers.res
+			}
+		}
+	};
 }
 
 
@@ -354,31 +354,31 @@ function defaultsLegacy() {
  * @return {Object}  Modern options
  */
 function defaultsModern() {
-  return {
-    host: null,
-    interfaces: [
-      { type: "mqtt", port: 1883, maxConnections: 10000000 }
-    ],
-    backend: {
-      json: false,
-      wildcardOne: '+',
-      wildcardSome: '#'
-    },
-    stats: false,
-    publishNewClient: true,
-    publishClientDisconnect: true,
-    publishSubscriptions: true,
-    maxInflightMessages: 1024,
-    onQoS2publish: 'noack',
-    logger: {
-      name: "mosca",
-      level: "warn",
-      serializers: {
-        client: serializers.clientSerializer,
-        packet: serializers.packetSerializer,
-        req: pino.stdSerializers.req,
-        res: pino.stdSerializers.res
-      }
-    }
-  };
+	return {
+		host: null,
+		interfaces: [
+			{ type: "mqtt", port: 1883, maxConnections: 10000000 }
+		],
+		backend: {
+			json: false,
+			wildcardOne: '+',
+			wildcardSome: '#'
+		},
+		stats: false,
+		publishNewClient: true,
+		publishClientDisconnect: true,
+		publishSubscriptions: true,
+		maxInflightMessages: 1024,
+		onQoS2publish: 'noack',
+		logger: {
+			name: "mosca",
+			level: "warn",
+			serializers: {
+				client: serializers.clientSerializer,
+				packet: serializers.packetSerializer,
+				req: pino.stdSerializers.req,
+				res: pino.stdSerializers.res
+			}
+		}
+	};
 }

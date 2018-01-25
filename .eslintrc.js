@@ -27,7 +27,6 @@ module.exports = {
     "rules": {
         "indent": ["warn", "tab"],
         "linebreak-style": ["warn", "unix"],
-        "quotes": ["error", "single"],
         "semi": ["warn", "always"],
         "no-console": "off",
         "no-cond-assign": ["error"],

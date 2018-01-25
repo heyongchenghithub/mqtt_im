@@ -1,27 +1,3 @@
-/*
-Copyright (c) 2013-2016 Matteo Collina, http://matteocollina.com
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation
-files (the "Software"), to deal in the Software without
-restriction, including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
-*/
 "use strict";
 
 var hasher = require("pbkdf2-password")();
@@ -37,7 +13,7 @@ var defaultGlob = "**";
  * @api public
  */
 function Authorizer(users) {
-  this.users = users || {};
+	this.users = users || {};
 }
 module.exports = Authorizer;
 
@@ -46,11 +22,11 @@ module.exports = Authorizer;
  *
  * @api public
  */
-Authorizer.prototype.__defineGetter__("authenticate", function() {
-  var that = this;
-  return function(client, user, pass, cb) {
-    that._authenticate(client, user, pass, cb);
-  };
+Authorizer.prototype.__defineGetter__("authenticate", function () {
+	var that = this;
+	return function (client, user, pass, cb) {
+		that._authenticate(client, user, pass, cb);
+	};
 });
 
 /**
@@ -58,11 +34,11 @@ Authorizer.prototype.__defineGetter__("authenticate", function() {
  *
  * @api public
  */
-Authorizer.prototype.__defineGetter__("authorizePublish", function() {
-  var that = this;
-  return function(client, topic, payload, cb) {
-    cb(null, minimatch(topic, that.users[client.user].authorizePublish || defaultGlob));
-  };
+Authorizer.prototype.__defineGetter__("authorizePublish", function () {
+	var that = this;
+	return function (client, topic, payload, cb) {
+		cb(null, minimatch(topic, that.users[client.user].authorizePublish || defaultGlob));
+	};
 });
 
 /**
@@ -70,11 +46,11 @@ Authorizer.prototype.__defineGetter__("authorizePublish", function() {
  *
  * @api public
  */
-Authorizer.prototype.__defineGetter__("authorizeSubscribe", function() {
-  var that = this;
-  return function(client, topic, cb) {
-    cb(null, minimatch(topic, that.users[client.user].authorizeSubscribe || defaultGlob));
-  };
+Authorizer.prototype.__defineGetter__("authorizeSubscribe", function () {
+	var that = this;
+	return function (client, topic, cb) {
+		cb(null, minimatch(topic, that.users[client.user].authorizeSubscribe || defaultGlob));
+	};
 });
 
 /**
@@ -82,32 +58,32 @@ Authorizer.prototype.__defineGetter__("authorizeSubscribe", function() {
  *
  * @api private
  */
-Authorizer.prototype._authenticate = function(client, user, pass, cb) {
+Authorizer.prototype._authenticate = function (client, user, pass, cb) {
 
-  var missingUser = !user || !pass || !this.users[user];
+	var missingUser = !user || !pass || !this.users[user];
 
-  if (missingUser) {
-    cb(null, false);
-    return;
-  }
+	if (missingUser) {
+		cb(null, false);
+		return;
+	}
 
-  user = user.toString();
+	user = user.toString();
 
-  client.user = user;
-  user = this.users[user];
+	client.user = user;
+	user = this.users[user];
 
-  hasher({
-    password: pass.toString(),
-    salt: user.salt
-  }, function(err, pass, salt, hash) {
-    if (err) {
-      cb(err);
-      return;
-    }
+	hasher({
+		password: pass.toString(),
+		salt: user.salt
+	}, function (err, pass, salt, hash) {
+		if (err) {
+			cb(err);
+			return;
+		}
 
-    var success = (user.hash === hash);
-    cb(null, success);
-  });
+		var success = (user.hash === hash);
+		cb(null, success);
+	});
 };
 
 /**
@@ -123,41 +99,41 @@ Authorizer.prototype._authenticate = function(client, user, pass, cb) {
  * @param {Function} cb The callback that will be called after the
  *   insertion.
  */
-Authorizer.prototype.addUser = function(user, pass, authorizePublish,
-                                        authorizeSubscribe, cb) {
-  var that = this;
+Authorizer.prototype.addUser = function (user, pass, authorizePublish,
+	authorizeSubscribe, cb) {
+	var that = this;
 
-  if (typeof authorizePublish === "function") {
-    cb = authorizePublish;
-    authorizePublish = null;
-    authorizeSubscribe = null;
-  } else if (typeof authorizeSubscribe == "function") {
-    cb = authorizeSubscribe;
-    authorizeSubscribe = null;
-  }
+	if (typeof authorizePublish === "function") {
+		cb = authorizePublish;
+		authorizePublish = null;
+		authorizeSubscribe = null;
+	} else if (typeof authorizeSubscribe == "function") {
+		cb = authorizeSubscribe;
+		authorizeSubscribe = null;
+	}
 
-  if (!authorizePublish) {
-    authorizePublish = defaultGlob;
-  }
+	if (!authorizePublish) {
+		authorizePublish = defaultGlob;
+	}
 
-  if (!authorizeSubscribe) {
-    authorizeSubscribe = defaultGlob;
-  }
+	if (!authorizeSubscribe) {
+		authorizeSubscribe = defaultGlob;
+	}
 
-  hasher({
-    password: pass.toString()
-  }, function(err, pass, salt, hash) {
-    if (!err) {
-      that.users[user] = {
-        salt: salt,
-        hash: hash,
-        authorizePublish: authorizePublish,
-        authorizeSubscribe: authorizeSubscribe
-      };
-    }
-    cb(err);
-  });
-  return this;
+	hasher({
+		password: pass.toString()
+	}, function (err, pass, salt, hash) {
+		if (!err) {
+			that.users[user] = {
+				salt: salt,
+				hash: hash,
+				authorizePublish: authorizePublish,
+				authorizeSubscribe: authorizeSubscribe
+			};
+		}
+		cb(err);
+	});
+	return this;
 };
 
 
@@ -170,8 +146,8 @@ Authorizer.prototype.addUser = function(user, pass, authorizePublish,
  * @param {Function} cb The callback that will be called after the
  *   deletion.
  */
-Authorizer.prototype.rmUser = function(user, cb) {
-  delete this.users[user];
-  cb();
-  return this;
+Authorizer.prototype.rmUser = function (user, cb) {
+	delete this.users[user];
+	cb();
+	return this;
 };

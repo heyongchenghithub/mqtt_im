@@ -39,7 +39,7 @@ var options = require('./options');
 var interfaces = require('./interfaces');
 
 var defaults = options.defaultsLegacy();
-var nop = function() {};
+var nop = function () { };
 
 /**
  * The Mosca Server is a very simple MQTT server that
@@ -100,218 +100,229 @@ var nop = function() {};
  * @api public
  */
 function Server(opts, callback) {
-  var modernOpts = options.modernize(opts);
-  var validationResult = options.validate(modernOpts);
+	var modernOpts = options.modernize(opts);
+	var validationResult = options.validate(modernOpts);
 
-  if (validationResult.errors.length > 0) {
-    var errMessage = validationResult.errors[0].message;
-    if (callback) {
-      callback(new Error(errMessage));
-    } else {
-      throw new Error(errMessage);
-    }
-  }
+	if (validationResult.errors.length > 0) {
+		var errMessage = validationResult.errors[0].message;
+		if (callback) {
+			callback(new Error(errMessage));
+		} else {
+			throw new Error(errMessage);
+		}
+	}
 
-  modernOpts = options.populate(modernOpts);
+	modernOpts = options.populate(modernOpts);
 
-  if (!(this instanceof Server)) {
-    return new Server(opts, callback);
-  }
+	if (!(this instanceof Server)) {
+		return new Server(opts, callback);
+	}
 
-  EventEmitter.call(this);
+	EventEmitter.call(this);
+	this.opts = extend(true, {}, defaults, opts);
+	this.modernOpts = modernOpts;
+	if (this.opts.secure) {
+		this.opts.secure.port = this.opts.secure.port || 8883;
+	}
+	if (this.opts.http) {
+		this.opts.http.port = this.opts.http.port || 3000;
+	}
+	if (this.opts.https) {
+		this.opts.https.port = this.opts.https.port || 3001;
+	}
 
-  if (true) { // REFACTOR: kludge for tests that rely on options structure
-    this.opts = extend(true, {}, defaults, opts);
-    this.modernOpts = modernOpts;
+	// if (true) { // REFACTOR: kludge for tests that rely on options structure
+	// 	this.opts = extend(true, {}, defaults, opts);
+	// 	this.modernOpts = modernOpts;
 
-    if (this.opts.secure) {
-      this.opts.secure.port = this.opts.secure.port || 8883;
-    }
-    if (this.opts.http) {
-      this.opts.http.port = this.opts.http.port || 3000;
-    }
-    if (this.opts.https) {
-      this.opts.https.port = this.opts.https.port || 3001;
-    }
-  } else { // REFACTOR: enable this once test are updated
-    this.opts = modernOpts;
-  }
+	// 	if (this.opts.secure) {
+	// 		this.opts.secure.port = this.opts.secure.port || 8883;
+	// 	}
+	// 	if (this.opts.http) {
+	// 		this.opts.http.port = this.opts.http.port || 3000;
+	// 	}
+	// 	if (this.opts.https) {
+	// 		this.opts.https.port = this.opts.https.port || 3001;
+	// 	}
+	// } else { // REFACTOR: enable this once test are updated
+	// 	this.opts = modernOpts;
+	// }
 
-  callback = callback || function() {};
+	callback = callback || function () { };
 
-  this._dedupId = 0;
-  this.clients = {};
-  this.closed = false;
+	this._dedupId = 0;
+	this.clients = {};
+	this.closed = false;
 
-  if (this.modernOpts.logger.childOf) {
-    this.logger = this.modernOpts.logger.childOf;
-    delete this.modernOpts.logger.childOf;
-    delete this.modernOpts.logger.name;
-    this.logger = this.logger.child(this.modernOpts.logger);
-  } else {
-    this.logger = pino(this.modernOpts.logger);
-  }
+	if (this.modernOpts.logger.childOf) {
+		this.logger = this.modernOpts.logger.childOf;
+		delete this.modernOpts.logger.childOf;
+		delete this.modernOpts.logger.name;
+		this.logger = this.logger.child(this.modernOpts.logger);
+	} else {
+		this.logger = pino(this.modernOpts.logger);
+	}
 
-  if(this.modernOpts.stats) {
-    new Stats().wire(this);
-  }
+	if (this.modernOpts.stats) {
+		new Stats().wire(this);
+	}
 
-  var that = this;
+	var that = this;
 
-  // put QOS-2 spoofing as a variable direct on server
-  this.onQoS2publish = this.modernOpts.onQoS2publish;
-  
-  // each Server has a dummy id for logging purposes
-  this.id = this.modernOpts.id || nanoid(7);
+	// put QOS-2 spoofing as a variable direct on server
+	this.onQoS2publish = this.modernOpts.onQoS2publish;
 
-  // initialize servers list
-  this.servers = [];
+	// each Server has a dummy id for logging purposes
+	this.id = this.modernOpts.id || nanoid(7);
+
+	// initialize servers list
+	this.servers = [];
 
 
-  steed.series([
+	steed.series([
 
-    // steed.series: wait for ascoltatore
-    function (done) {
+		// steed.series: wait for ascoltatore
+		function (done) {
 
-      if(that.modernOpts.ascoltatore) {
-        that.ascoltatore = that.modernOpts.ascoltatore;
-        done();
-      }
-      else {
-        that.ascoltatore = ascoltatori.build(that.modernOpts.backend, done);
-        that.ascoltatore.on('error', that.emit.bind(that, 'error'));
-      }
-    },
+			if (that.modernOpts.ascoltatore) {
+				that.ascoltatore = that.modernOpts.ascoltatore;
+				done();
+			}
+			else {
+				that.ascoltatore = ascoltatori.build(that.modernOpts.backend, done);
+				that.ascoltatore.on('error', that.emit.bind(that, 'error'));
+			}
+		},
 
-    // steed.series: wait for persistence
+		// steed.series: wait for persistence
 
-    function (done) {
-      // REFACTOR: partially move to options.validate and options.populate?
-      var persistenceFactory = that.modernOpts.persistence && that.modernOpts.persistence.factory;
-      if (persistenceFactory) {
-        if (typeof persistenceFactory === 'string') {
-          var factoryName = persistenceFactory;
-          persistenceFactory = persistence.getFactory(factoryName);
-          if (!persistenceFactory) {
-            return callback(new Error('No persistence factory found for ' + factoryName ));
-          }
-        }
+		function (done) {
+			// REFACTOR: partially move to options.validate and options.populate?
+			var persistenceFactory = that.modernOpts.persistence && that.modernOpts.persistence.factory;
+			if (persistenceFactory) {
+				if (typeof persistenceFactory === 'string') {
+					var factoryName = persistenceFactory;
+					persistenceFactory = persistence.getFactory(factoryName);
+					if (!persistenceFactory) {
+						return callback(new Error('No persistence factory found for ' + factoryName));
+					}
+				}
 
-        that.persistence = persistenceFactory(that.modernOpts.persistence, done);
-        that.persistence.wire(that);
-      } else {
-        that.persistence = null;
-        done();
-      }
-    },
+				that.persistence = persistenceFactory(that.modernOpts.persistence, done);
+				that.persistence.wire(that);
+			} else {
+				that.persistence = null;
+				done();
+			}
+		},
 
-    // steed.series: iterate over defined interfaces, build servers and listen
-    function (done) {
+		// steed.series: iterate over defined interfaces, build servers and listen
+		function (done) {
 
-      steed.eachSeries(that.modernOpts.interfaces, function (iface, dn) {
-        var fallback = that.modernOpts;
-        var host = iface.host || that.modernOpts.host;
-        var port = iface.port || that.modernOpts.port;
+			steed.eachSeries(that.modernOpts.interfaces, function (iface, dn) {
+				var fallback = that.modernOpts;
+				var host = iface.host || that.modernOpts.host;
+				var port = iface.port || that.modernOpts.port;
 
-        var server = interfaces.serverFactory(iface, fallback, that);
-        that.servers.push(server);
-        server.maxConnections = iface.maxConnections || 10000000;
-        server.listen(port, host, dn);
-      }, done);
-    },
+				var server = interfaces.serverFactory(iface, fallback, that);
+				that.servers.push(server);
+				server.maxConnections = iface.maxConnections || 10000000;
+				server.listen(port, host, dn);
+			}, done);
+		},
 
-    // steed.series: log startup information
-    function (done) {
-      var logInfo = {};
+		// steed.series: log startup information
+		function (done) {
+			var logInfo = {};
 
-      that.modernOpts.interfaces.forEach(function (iface) {
-        var name = iface.type;
-        if (typeof name !== "string") {
-          name = iface.type.name;
-        }
-        logInfo[name] = iface.port;
-      });
+			that.modernOpts.interfaces.forEach(function (iface) {
+				var name = iface.type;
+				if (typeof name !== "string") {
+					name = iface.type.name;
+				}
+				logInfo[name] = iface.port;
+			});
 
-      that.logger.info(logInfo, "server started");
-      that.emit("ready");
-      done(null);
-    }
-  ], function(err, results){
-    if(err) {
-      callback(err);
-    }
-  });
+			that.logger.info(logInfo, "server started");
+			that.emit("ready");
+			done(null);
+		}
+	], function (err, results) {
+		if (err) {
+			callback(err);
+		}
+	});
 
-  that.on("clientConnected", function(client) {
-    if(that.modernOpts.publishNewClient) {
-      that.publish({
-        topic: "$SYS/" + that.id + "/new/clients",
-        payload: client.id
-      });
-    }
+	that.on("clientConnected", function (client) {
+		if (that.modernOpts.publishNewClient) {
+			that.publish({
+				topic: "$SYS/" + that.id + "/new/clients",
+				payload: client.id
+			});
+		}
 
-    this.clients[client.id] = client;
-  });
+		this.clients[client.id] = client;
+	});
 
-  that.once("ready", function() {
-    callback(null, that);
-  });
+	that.once("ready", function () {
+		callback(null, that);
+	});
 
-  that.on('ready', function() {
-    that.ascoltatore.subscribe(
-      "$SYS/+/new/clients",
-      function(topic, payload) {
-        var serverId, clientId;
+	that.on('ready', function () {
+		that.ascoltatore.subscribe(
+			"$SYS/+/new/clients",
+			function (topic, payload) {
+				var serverId, clientId;
 
-        serverId = topic.split('/')[1];
-        clientId = payload;
+				serverId = topic.split('/')[1];
+				clientId = payload;
 
-        if(that.clients[clientId] && serverId !== that.id) {
-          that.clients[clientId].close(null, "new connection request");
-        }
-      }
-    );
-  });
+				if (that.clients[clientId] && serverId !== that.id) {
+					that.clients[clientId].close(null, "new connection request");
+				}
+			}
+		);
+	});
 
-  if(that.modernOpts.publishSubscriptions) {
-    that.on("subscribed", function(topic, client) {
-      that.publish({
-        topic: "$SYS/" + that.id + "/new/subscribes",
-        payload: JSON.stringify({
-          clientId: client.id,
-          topic: topic
-        })
-      });
-    });
+	if (that.modernOpts.publishSubscriptions) {
+		that.on("subscribed", function (topic, client) {
+			that.publish({
+				topic: "$SYS/" + that.id + "/new/subscribes",
+				payload: JSON.stringify({
+					clientId: client.id,
+					topic: topic
+				})
+			});
+		});
 
-    that.on("unsubscribed", function(topic, client) {
-      that.publish({
-        topic: "$SYS/" + that.id + "/new/unsubscribes",
-        payload: JSON.stringify({
-          clientId: client.id,
-          topic: topic
-        })
-      });
-    });
-  }
+		that.on("unsubscribed", function (topic, client) {
+			that.publish({
+				topic: "$SYS/" + that.id + "/new/unsubscribes",
+				payload: JSON.stringify({
+					clientId: client.id,
+					topic: topic
+				})
+			});
+		});
+	}
 
-  that.on("clientDisconnected", function(client) {
-    if(that.modernOpts.publishClientDisconnect) {
-      that.publish({
-        topic: "$SYS/" + that.id + "/disconnect/clients",
-        payload: client.id
-      });
-    }
-    delete this.clients[client.id];
-  });
+	that.on("clientDisconnected", function (client) {
+		if (that.modernOpts.publishClientDisconnect) {
+			that.publish({
+				topic: "$SYS/" + that.id + "/disconnect/clients",
+				payload: client.id
+			});
+		}
+		delete this.clients[client.id];
+	});
 }
 
 module.exports = Server;
 
 Server.prototype = Object.create(EventEmitter.prototype);
 
-Server.prototype.toString = function() {
-  return 'mosca.Server';
+Server.prototype.toString = function () {
+	return 'mosca.Server';
 };
 
 /**
@@ -323,7 +334,7 @@ Server.prototype.toString = function() {
  * @param {Function} done The subscription result
  */
 Server.prototype.subscribe = function subscribe(topic, callback, done) {
-  this.ascoltatore.subscribe(topic, callback, done);
+	this.ascoltatore.subscribe(topic, callback, done);
 };
 
 /**
@@ -337,60 +348,60 @@ Server.prototype.subscribe = function subscribe(topic, callback, done) {
  */
 Server.prototype.publish = function publish(packet, client, callback) {
 
-  var that = this;
-  var logger = this.logger;
+	var that = this;
+	var logger = this.logger;
 
-  if (typeof client === 'function') {
-    callback = client;
-    client = null;
-  } else if (client) {
-    logger = client.logger;
-  }
+	if (typeof client === 'function') {
+		callback = client;
+		client = null;
+	} else if (client) {
+		logger = client.logger;
+	}
 
-  if (!callback) {
-    callback = nop;
-  }
+	if (!callback) {
+		callback = nop;
+	}
 
-  var newPacket = {
-    topic: packet.topic,
-    payload: packet.payload,
-    messageId: this.generateUniqueId(),
-    qos: packet.qos,
-    retain: packet.retain
-  };
+	var newPacket = {
+		topic: packet.topic,
+		payload: packet.payload,
+		messageId: this.generateUniqueId(),
+		qos: packet.qos,
+		retain: packet.retain
+	};
 
-  var opts = {
-    qos: packet.qos,
-    messageId: newPacket.messageId
-  };
+	var opts = {
+		qos: packet.qos,
+		messageId: newPacket.messageId
+	};
 
-  if (client) {
-    opts.clientId = client.id;
-  }
+	if (client) {
+		opts.clientId = client.id;
+	}
 
-  that.storePacket(newPacket, function() {
-    if (that.closed) {
-      logger.debug({ packet: newPacket }, "not delivering because we are closed");
-      return;
-    }
+	that.storePacket(newPacket, function () {
+		if (that.closed) {
+			logger.debug({ packet: newPacket }, "not delivering because we are closed");
+			return;
+		}
 
-    that.ascoltatore.publish(
-      newPacket.topic,
-      newPacket.payload,
-      opts,
-      function() {
-        that.published(newPacket, client, function() {
-          if( newPacket.topic.indexOf( '$SYS' ) >= 0 ) {
-            logger.trace({ packet: newPacket }, "published packet");
-          } else {
-            logger.debug({ packet: newPacket }, "published packet");
-          }
-          that.emit("published", newPacket, client);
-          callback(undefined, newPacket);
-        });
-      }
-    );
-  });
+		that.ascoltatore.publish(
+			newPacket.topic,
+			newPacket.payload,
+			opts,
+			function () {
+				that.published(newPacket, client, function () {
+					if (newPacket.topic.indexOf('$SYS') >= 0) {
+						logger.trace({ packet: newPacket }, "published packet");
+					} else {
+						logger.debug({ packet: newPacket }, "published packet");
+					}
+					that.emit("published", newPacket, client);
+					callback(undefined, newPacket);
+				});
+			}
+		);
+	});
 };
 
 /**
@@ -404,8 +415,8 @@ Server.prototype.publish = function publish(packet, client, callback) {
  * @param {String} password The password
  * @param {Function} callback The callback to return the verdict
  */
-Server.prototype.authenticate = function(client, username, password, callback) {
-  callback(null, true);
+Server.prototype.authenticate = function (client, username, password, callback) {
+	callback(null, true);
 };
 
 /**
@@ -419,8 +430,8 @@ Server.prototype.authenticate = function(client, username, password, callback) {
  * @param {Object} client The MQTTConnection that is a client
  * @param {Function} callback The callback to send the puback
  */
-Server.prototype.published = function(packet, client, callback) {
-  callback(null);
+Server.prototype.published = function (packet, client, callback) {
+	callback(null);
 };
 
 /**
@@ -434,8 +445,8 @@ Server.prototype.published = function(packet, client, callback) {
  * @param {String} paylod The paylod
  * @param {Function} callback The callback to return the verdict
  */
-Server.prototype.authorizePublish = function(client, topic, payload, callback) {
-  callback(null, true);
+Server.prototype.authorizePublish = function (client, topic, payload, callback) {
+	callback(null, true);
 };
 
 /**
@@ -448,8 +459,8 @@ Server.prototype.authorizePublish = function(client, topic, payload, callback) {
  * @param {String} topic The topic
  * @param {Function} callback The callback to return the verdict
  */
-Server.prototype.authorizeSubscribe = function(client, topic, callback) {
-  callback(null, true);
+Server.prototype.authorizeSubscribe = function (client, topic, callback) {
+	callback(null, true);
 };
 
 /**
@@ -462,8 +473,8 @@ Server.prototype.authorizeSubscribe = function(client, topic, callback) {
  * @param {Object} packet The packet to be published.
  * @param {Function} callback The callback to return the authorization flag.
  */
-Server.prototype.authorizeForward = function(client, packet, callback) {
-  callback(null, true);
+Server.prototype.authorizeForward = function (client, packet, callback) {
+	callback(null, true);
 };
 
 
@@ -477,10 +488,10 @@ Server.prototype.authorizeForward = function(client, packet, callback) {
  * @param {Object} packet The MQTT packet to store
  * @param {Function} callback
  */
-Server.prototype.storePacket = function(packet, callback) {
-  if (callback) {
-    callback();
-  }
+Server.prototype.storePacket = function (packet, callback) {
+	if (callback) {
+		callback();
+	}
 };
 
 /**
@@ -492,10 +503,10 @@ Server.prototype.storePacket = function(packet, callback) {
  * @param {Number} messageId The messsageId of the packet
  * @param {Function} callback
  */
-Server.prototype.deleteOfflinePacket = function(client, messageId, callback) {
-  if (callback) {
-    callback();
-  }
+Server.prototype.deleteOfflinePacket = function (client, messageId, callback) {
+	if (callback) {
+		callback();
+	}
 };
 
 /**
@@ -508,10 +519,10 @@ Server.prototype.deleteOfflinePacket = function(client, messageId, callback) {
  * @param {MoscaClient} client The client to forward the packet's to.
  * @param {Function} callback
  */
-Server.prototype.forwardRetained = function(pattern, client, callback) {
-  if (callback) {
-    callback();
-  }
+Server.prototype.forwardRetained = function (pattern, client, callback) {
+	if (callback) {
+		callback();
+	}
 };
 
 /**
@@ -521,10 +532,10 @@ Server.prototype.forwardRetained = function(pattern, client, callback) {
  * @param {MoscaClient} client
  * @param {Function} callback
  */
-Server.prototype.restoreClientSubscriptions = function(client, callback) {
-  if (callback) {
-    callback();
-  }
+Server.prototype.restoreClientSubscriptions = function (client, callback) {
+	if (callback) {
+		callback();
+	}
 };
 
 /**
@@ -534,10 +545,10 @@ Server.prototype.restoreClientSubscriptions = function(client, callback) {
  * @param {MoscaClient} client
  * @param {Function} callback
  */
-Server.prototype.forwardOfflinePackets = function(client, callback) {
-  if (callback) {
-    callback();
-  }
+Server.prototype.forwardOfflinePackets = function (client, callback) {
+	if (callback) {
+		callback();
+	}
 };
 
 /**
@@ -549,10 +560,10 @@ Server.prototype.forwardOfflinePackets = function(client, callback) {
  * @param {Object} packet The new packet
  * @param {Function} callback
  */
-Server.prototype.updateOfflinePacket = function(client, originMessageId, packet, callback) {
-  if (callback) {
-    callback(null, packet);
-  }
+Server.prototype.updateOfflinePacket = function (client, originMessageId, packet, callback) {
+	if (callback) {
+		callback(null, packet);
+	}
 };
 
 /**
@@ -562,10 +573,10 @@ Server.prototype.updateOfflinePacket = function(client, originMessageId, packet,
  * @param {MoscaClient} client
  * @param {Function} callback
  */
-Server.prototype.persistClient = function(client, callback) {
-  if (callback) {
-    callback();
-  }
+Server.prototype.persistClient = function (client, callback) {
+	if (callback) {
+		callback();
+	}
 };
 
 /**
@@ -574,39 +585,39 @@ Server.prototype.persistClient = function(client, callback) {
  * @api public
  * @param {Function} callback The closed callback function
  */
-Server.prototype.close = function(callback) {
-  var that = this;
-  var stuffToClose = [];
+Server.prototype.close = function (callback) {
+	var that = this;
+	var stuffToClose = [];
 
-  callback = callback || function nop() {};
+	callback = callback || function nop() { };
 
-  if (that.closed) {
-    return callback();
-  }
+	if (that.closed) {
+		return callback();
+	}
 
-  that.closed = true;
+	that.closed = true;
 
-  Object.keys(that.clients).forEach(function(i) {
-    stuffToClose.push(that.clients[i]);
-  });
+	Object.keys(that.clients).forEach(function (i) {
+		stuffToClose.push(that.clients[i]);
+	});
 
-  that.servers.forEach(function(server) {
-    stuffToClose.push(server);
-  });
+	that.servers.forEach(function (server) {
+		stuffToClose.push(server);
+	});
 
-  if (that.persistence) {
-    stuffToClose.push(that.persistence);
-  }
+	if (that.persistence) {
+		stuffToClose.push(that.persistence);
+	}
 
-  steed.each(stuffToClose, function(toClose, cb) {
-    toClose.close(cb, "server closed");
-  }, function() {
-    that.ascoltatore.close(function () {
-      that.logger.info("server closed");
-      that.emit("closed");
-      callback();
-    });
-  });
+	steed.each(stuffToClose, function (toClose, cb) {
+		toClose.close(cb, "server closed");
+	}, function () {
+		that.ascoltatore.close(function () {
+			that.logger.info("server closed");
+			that.emit("closed");
+			callback();
+		});
+	});
 };
 
 /**
@@ -616,24 +627,24 @@ Server.prototype.close = function(callback) {
  * @param {HttpServer} server
  * @param {String} path
  */
-Server.prototype.attachHttpServer = function(server, path) {
-  var that = this;
+Server.prototype.attachHttpServer = function (server, path) {
+	var that = this;
 
-  var opt = { server: server };
-  if (path) {
-    opt.path = path;
-  }
-  
-  ws.createServer(opt, function(stream) {
-    var conn = new Connection(stream);
-    new Client(conn, that);
-  });
+	var opt = { server: server };
+	if (path) {
+		opt.path = path;
+	}
+
+	ws.createServer(opt, function (stream) {
+		var conn = new Connection(stream);
+		new Client(conn, that);
+	});
 };
 
-Server.prototype.nextDedupId = function() {
-  return this._dedupId++;
+Server.prototype.nextDedupId = function () {
+	return this._dedupId++;
 };
 
-Server.prototype.generateUniqueId = function() {
-  return nanoid(7);
+Server.prototype.generateUniqueId = function () {
+	return nanoid(7);
 };
