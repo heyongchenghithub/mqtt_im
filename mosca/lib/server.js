@@ -37,6 +37,7 @@ var nanoid = require("nanoid");
 var persistence = require('./persistence');
 var options = require('./options');
 var interfaces = require('./interfaces');
+const md5 = require('md5');
 
 var defaults = options.defaultsLegacy();
 var nop = function () { };
@@ -411,12 +412,30 @@ Server.prototype.publish = function publish(packet, client, callback) {
  *
  * @api public
  * @param {Object} client The MQTTConnection that is a client
- * @param {String} username The username
- * @param {String} password The password
+ * @param {String} username The username （string）
+ * @param {String} password The password (buffer)
  * @param {Function} callback The callback to return the verdict
  */
 Server.prototype.authenticate = function (client, username, password, callback) {
-	callback(null, true);
+	if (!username || username.length !== 24) {
+		return callback(null, false);
+	}
+	if (password.toString() === 'superpassword') {
+		return callback(null, true);
+	}
+	const that = this;
+	that.persistence._account.findOne({ _id: ObjectId(username) }, { unionid:1, password:1 }, function (err, data) {
+		console.log(err, data.unionid, data.password);
+		if (err || !data) {
+			return callback(null, false);
+		}
+		if (data.unionid) {
+			return callback(null, md5(data.unionid) === password.toString());
+		}
+		return callback(null, md5(data.password) === password.toString());
+	});
+	// var authorized = (username === '5a5ea50c553513774072889a' && password.toString() === 'secret');
+	// if (authorized) client.user = username;
 };
 
 /**

@@ -8,6 +8,9 @@ var steed = require("steed")();
 var Matcher = require("./matcher");
 var topicPatterns = require("./utils").topicPatterns;
 var extend = require("extend");
+global.ObjectId = mongo.ObjectID;
+
+
 var defaults = {
 	ttl: {
 		// TTL for subscriptions is 1 hour
@@ -71,6 +74,7 @@ function MongoPersistence(options, done) {
 		}
 
 		that.db = db;
+		//初始化数据库连接
 		steed.parallel([
 			function (cb) {
 				db.collection("subscriptions", function (err, coll) {
@@ -129,6 +133,15 @@ function MongoPersistence(options, done) {
 				db.collection("retained", function (err, coll) {
 					that._retained = coll;
 					that._retained.ensureIndex("topic", { unique: true }, cb);
+				});
+			},
+			function (cb) {
+				db.collection("account", function (err, coll) {
+					if (err) {
+						return cb(err);
+					}
+					that._account = coll;
+					cb(null);
 				});
 			}
 		], function (err) {

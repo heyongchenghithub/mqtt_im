@@ -1,0 +1,9 @@
+{
+  "apps": [{
+    "name": "im",
+    "script": "./im.js",
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }]
+}

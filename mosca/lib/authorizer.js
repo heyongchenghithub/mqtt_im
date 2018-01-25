@@ -103,6 +103,8 @@ Authorizer.prototype.addUser = function (user, pass, authorizePublish,
 	authorizeSubscribe, cb) {
 	var that = this;
 
+	console.log(that);
+
 	if (typeof authorizePublish === "function") {
 		cb = authorizePublish;
 		authorizePublish = null;

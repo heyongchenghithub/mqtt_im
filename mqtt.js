@@ -77,12 +77,6 @@ function server(project) {
 	server.on('error', function (err) {
 		console.log(err);
 	});
-
-	server.authenticate = function (client, username, password, callback) {
-		// var authorized = (username === '5a5ea50c553513774072889a' && password.toString() === 'secret');
-		// if (authorized) client.user = username;
-		callback(null, true);
-	};
 	return server;
 
 }
