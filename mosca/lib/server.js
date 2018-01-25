@@ -37,7 +37,8 @@ var nanoid = require("nanoid");
 var persistence = require('./persistence');
 var options = require('./options');
 var interfaces = require('./interfaces');
-const md5 = require('md5');
+const authorizer = require('./authorizer');
+const md5 = require("md5");
 
 var defaults = options.defaultsLegacy();
 var nop = function () { };
@@ -175,6 +176,8 @@ function Server(opts, callback) {
 
 	// each Server has a dummy id for logging purposes
 	this.id = this.modernOpts.id || nanoid(7);
+
+	this.authorizer = new authorizer();
 
 	// initialize servers list
 	this.servers = [];
