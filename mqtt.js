@@ -67,12 +67,13 @@ function server(project) {
 		}
 	});
 
-	server.on('ready', function (err) {
-		if (err) {
-			return console.error('Mosca server setup failed');
+	//a client has sent back a puback for a published message
+	server.on('delivered', function (packet, client) {
+		console.lot('broker delivered topic', packet.topic);
+		if (packet.payload) {
+			console.log('broker unsubscribed payload', (packet.payload).toString());
 		}
-		console.log(`Mosca server for ${server.id} is up and running`);
-	});
+	})
 
 	server.on('error', function (err) {
 		console.log(err);
